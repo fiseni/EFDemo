@@ -1,4 +1,5 @@
-﻿using EFDemo.Domain;
+﻿using EFDemo;
+using EFDemo.Domain;
 using EFDemo.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("AppConnection");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
+
+builder.Services.AddAutoMapper(typeof(EFDemoMarker).Assembly);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -34,8 +37,8 @@ using (var scope = app.Services.CreateScope())
 
     if (!await dbContext.Stores.AnyAsync())
     {
-        var store1 = new Store { Name = "Store1", Address = new Address { Street = "Street 1", City = "City1 " } };
-        var store2 = new Store { Name = "Store2", Address = new Address { Street = "Street 2", City = "City2 " } };
+        var store1 = new Store("Store1", new Address { Street = "Street 1", City = "City1 " });
+        var store2 = new Store("Store2", new Address { Street = "Street 2", City = "City2 " });
 
         var product1 = new Product { Name = "Product1" };
         var product2 = new Product { Name = "Product2" };

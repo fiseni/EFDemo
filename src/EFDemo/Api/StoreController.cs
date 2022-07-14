@@ -1,4 +1,6 @@
-﻿using EFDemo.Api.Models;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using EFDemo.Api.Models;
 using EFDemo.Domain;
 using EFDemo.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -10,48 +12,35 @@ namespace EFDemo.Api;
 public class StoreController : ControllerBase
 {
 	private readonly AppDbContext _dbContext;
+	private readonly IMapper _mapper;
 
-	public StoreController(AppDbContext dbContext)
+	public StoreController(AppDbContext dbContext, IMapper mapper)
 	{
 		_dbContext = dbContext;
+		_mapper = mapper;
 	}
 
 	[HttpGet("/stores")]
 	public async Task<ActionResult<List<StoreListDto>>> ListAllAsync(CancellationToken cancellationToken)
 	{
-		var stores = await _dbContext.Stores
-			.Select(x => new StoreListDto
-			{
-				Id = x.Id,
-				Name = x.Name
-			})
+        var stores = await _dbContext.Stores
+			.ProjectTo<StoreListDto>(_mapper.ConfigurationProvider)
 			.ToListAsync(cancellationToken);
 
-		return stores;
+		var result = _mapper.Map<List<StoreListDto>>(stores);
+
+		return result;
 	}
 
 	[HttpGet("/stores/{id}")]
 	public async Task<ActionResult<StoreDto>> Get([FromRoute] int id, CancellationToken cancellationToken)
 	{
-		//var store = await _dbContext.Stores
-		//	.Include(x=>x.Products)
-		//	.Where(x => x.Products.Any(p => p.Id == id))
-		//	.FirstOrDefaultAsync(cancellationToken);
-
-		var storeDto = await _dbContext.Stores
+		var store = await _dbContext.Stores
 			.Where(x => x.Id == id)
-			.Select(x => new StoreDto
-			{
-				Id = x.Id,
-				Name = x.Name,
-				Products = x.Products.Select(p => new ProductDto
-				{
-					Name = p.Name
-				}).ToList()
-			})
+			.ProjectTo<StoreDto>(_mapper.ConfigurationProvider)
 			.FirstOrDefaultAsync(cancellationToken);
 
-		if (storeDto is null) return NotFound();
+        var storeDto = _mapper.Map<StoreDto>(store);
 
 		return storeDto;
 	}
@@ -59,44 +48,37 @@ public class StoreController : ControllerBase
 	[HttpPost("/stores")]
 	public async Task<ActionResult<StoreDto>> Post(StoreCreateDto createDto, CancellationToken cancellationToken)
 	{
-		var store = new Store
-		{
-			Name = createDto.Name
-		};
+		var store = _mapper.Map<Store>(createDto);
 
 		_dbContext.Stores.Add(store);
 
 		await _dbContext.SaveChangesAsync(cancellationToken);
 
-		return new StoreDto
-		{
-			Id = store.Id,
-			Name = store.Name
-		};
+		return _mapper.Map<StoreDto>(store);
 	}
 
 	[HttpPut("/stores/{id}")]
 	public async Task<ActionResult<StoreDto>> Update([FromRoute] int id, StoreUpdateDto updateDto, CancellationToken cancellationToken)
 	{
-		var store = await _dbContext.Stores.Where(x => x.Id == id).FirstOrDefaultAsync(cancellationToken);
+		var store = await _dbContext.Stores
+			.Where(x => x.Id == id)
+			.FirstOrDefaultAsync(cancellationToken);
 
 		if (store is null) return NotFound();
 
-		store.Name = updateDto.Name;
+		_mapper.Map(updateDto, store);
 
 		await _dbContext.SaveChangesAsync(cancellationToken);
 
-		return new StoreDto
-		{
-			Id = store.Id,
-			Name = store.Name
-		};
+		return _mapper.Map<StoreDto>(store);
 	}
 
 	[HttpDelete("/stores/{id}")]
 	public async Task<ActionResult> Delete([FromRoute] int id, CancellationToken cancellationToken)
 	{
-		var store = await _dbContext.Stores.Where(x => x.Id == id).FirstOrDefaultAsync(cancellationToken);
+		var store = await _dbContext.Stores
+            .Where(x => x.Id == id)
+            .FirstOrDefaultAsync(cancellationToken);
 
 		if (store is null) return NotFound();
 
